@@ -1,0 +1,395 @@
+#!/bin/bash
+
+START="1"
+STOP="100"
+
+CURRENT_RUN_START="52" 
+CURRENT_RUN_STOP="100" 
+
+SIM_TIME="600"
+SLIP_BETWEEN_SIMS="5m"
+
+# 1=OLSR; 2=AODV; 3=DSDV; 4=DSR
+ROUTING="2"
+
+# Parameters for power ETX metric
+ALPHA="0.005"
+BETA="60"
+
+# Parameters for AODV modifications
+# First aproach:
+# if [NB (number of neighbors) < NBavg (average NB)] then probaility of RREQ retransmission is P1, othervise the probablity is P2 
+P1="0.5"
+P2="0.3" # P1>P2
+# Second aproach:
+# P1 and P2 are limits of probabolity, but the probability between those limits have linear dependance of NB
+# P=1-NB/NBmax (maximum of NB); if [P>P1] then P=P1, othervise P=P2
+LINEAR="0" # default is NO ("0"), for linear type "1" instead of "0" 
+
+# P=KLINKS/NB
+#KLINKS="1 2 3 4 5" # number of links
+KLINKS="11"
+
+#AODV SUB-PROTOCOL NAME:
+#-----------------------
+#PROTOCOL_NAME=""               # 1) AODV or other (OLSR, DSDV, DSR) original protocol 
+#PROTOCOL_NAME="AODV-E"         # 2) AODV ETX
+#PROTOCOL_NAME="AODV-LE"        # 3) AODV Light ETX
+#PROTOCOL_NAME="AODV-LRE"       # 4) AODV Light Reverse ETX
+#PROTOCOL_NAME="AODV-PLRE"      # 5) AODV Power Light Reverse ETX
+#PROTOCOL_NAME="PAODV"          # 6) PAODV 
+#PROTOCOL_NAME="PAODV-PLRE"     # 7) PAODV Power Light Reverse ETX
+#PROTOCOL_NAME="NA-AODV"        # 8) PKAODV -> NA-AODV (former: PROTOCOL_NAME="PKAODV" & PROTOCOL_NAME="NB-PAODV")
+#PROTOCOL_NAME="NA-AODV-PLRE"   # 9) PKAODV-PLRE -> NA-AODV-PLRE (former: PROTOCOL_NAME="PKAODV-PLRE" & PROTOCOL_NAME="NB-PAODV-PLRE")
+#PROTOCOL_NAME="NA2-AODV-PLRE"  # 10) 
+#-------------------------------------------
+#Don't forget to replace files in AODV folder firs, or this changes here will be useless !!!!
+#-------------------------------------------
+AODV_SUBPROTOCOL=9
+
+#VEHICLES=" 50 100 200 300 400 500 600 700 800 900"
+#VEHICLES="100 200 300"
+#VEHICLES="100 200 300 400 500 600"
+VEHICLES="800"
+
+PROGRAM_NAME="vanet-npaf-v2.2"
+
+#1.manhattan grid, 2.highway, 3.random waypoint
+SC="1"
+
+echo Experiment starts...
+echo scenario $SC
+
+if [ $AODV_SUBPROTOCOL -eq 1  ] #
+then
+  for v in $VEHICLES
+  do
+    for r in $ROUTING
+    do
+      for (( run=$CURRENT_RUN_START; run<=$CURRENT_RUN_STOP; run++ ))
+      do
+        echo 
+        echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        echo x   Run = $run
+        echo x   "./waf --run \"$PROGRAM_NAME --simTime=$SIM_TIME --scenario=$SC --nNodes=$v"
+        echo x   "      --routingProtocol=$r (ORIGINAL protocol: 1=OLSR; 2=AODV; 3=DSDV; 4=DSR)"
+        echo x   "      --startRngRun=$START --currentRngRun=$run --stopRngRun=$STOP --externalRngRunControl=1"
+        echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        echo 
+        echo "Start time:"
+        date
+        ./waf --run "$PROGRAM_NAME --scenario=$SC --nNodes=$v --simTime=$SIM_TIME --routingProtocol=$r --startRngRun=$START --currentRngRun=$run --stopRngRun=$STOP --externalRngRunControl=1" 
+        echo "StopTime:"
+        date
+        echo --------------------------------------------------------------------------
+        echo Sleeping now for $SLIP_BETWEEN_SIMS...
+        sleep $SLIP_BETWEEN_SIMS
+      done
+    done
+  done
+fi
+
+if [ $AODV_SUBPROTOCOL -eq 2 ]
+then
+  PROTOCOL_NAME="AODV-E"
+  for v in $VEHICLES
+  do
+    for (( run=$CURRENT_RUN_START; run<=$CURRENT_RUN_STOP; run++ ))
+    do
+      echo 
+      echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      echo x   Run = $run
+      echo x   "./waf --run \"$PROGRAM_NAME --simTime=$SIM_TIME --scenario=$SC --nNodes=$v"
+      echo x   "      --routingProtocol=$ROUTING --routingProtocolName=$PROTOCOL_NAME"
+      echo x   "      --startRngRun=$START --currentRngRun=$run --stopRngRun=$STOP --externalRngRunControl=1"
+      echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      echo 
+      echo "Start time:"
+      date
+      ./waf --run "$PROGRAM_NAME --scenario=$SC --nNodes=$v --simTime=$SIM_TIME --routingProtocol=$ROUTING --routingProtocolName=$PROTOCOL_NAME --startRngRun=$START --currentRngRun=$run --stopRngRun=$STOP --externalRngRunControl=1" 
+      echo "StopTime:"
+      date
+      echo --------------------------------------------------------------------------
+      echo Sleeping now for $SLIP_BETWEEN_SIMS...
+      sleep $SLIP_BETWEEN_SIMS
+    done
+  done
+fi
+
+if [ $AODV_SUBPROTOCOL -eq 3 ] 
+then
+  for b in $BETA
+  do
+    PROTOCOL_NAME="AODV-LE-b_$b"
+    for v in $VEHICLES
+    do
+      for (( run=$CURRENT_RUN_START; run<=$CURRENT_RUN_STOP; run++ ))
+      do
+        echo 
+        echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        echo x   Run = $run
+        echo x   "./waf --run \"$PROGRAM_NAME --simTime=$SIM_TIME --scenario=$SC --nNodes=$v"
+        echo x   "      --routingProtocol=$ROUTING --routingProtocolName=$PROTOCOL_NAME"
+        echo x   "      --startRngRun=$START --currentRngRun=$run --stopRngRun=$STOP --externalRngRunControl=1"
+        echo x   "      --ns3::aodv::RoutingProtocol::Beta=$b"
+        echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        echo 
+        echo "Start time:"
+        date
+        ./waf --run "$PROGRAM_NAME --scenario=$SC --nNodes=$v --simTime=$SIM_TIME --routingProtocol=$ROUTING --routingProtocolName=$PROTOCOL_NAME --startRngRun=$START --currentRngRun=$run --stopRngRun=$STOP --externalRngRunControl=1 --ns3::aodv::RoutingProtocol::Beta=$b"
+        echo "StopTime:"
+        date
+        echo --------------------------------------------------------------------------
+        echo Sleeping now for $SLIP_BETWEEN_SIMS...
+        sleep $SLIP_BETWEEN_SIMS
+      done
+    done
+  done
+fi
+
+if [ $AODV_SUBPROTOCOL -eq 4 ] 
+then
+  for b in $BETA
+  do
+    PROTOCOL_NAME="AODV-LRE-b_$b"
+    for v in $VEHICLES
+    do
+      for (( run=$CURRENT_RUN_START; run<=$CURRENT_RUN_STOP; run++ ))
+      do
+        echo 
+        echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        echo x   Run = $run
+        echo x   "./waf --run \"$PROGRAM_NAME --simTime=$SIM_TIME --scenario=$SC --nNodes=$v"
+        echo x   "      --routingProtocol=$ROUTING --routingProtocolName=$PROTOCOL_NAME"
+        echo x   "      --startRngRun=$START --currentRngRun=$run --stopRngRun=$STOP --externalRngRunControl=1"
+        echo x   "      --ns3::aodv::RoutingProtocol::Beta=$b"
+        echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        echo 
+        echo "Start time:"
+        date
+        ./waf --run "$PROGRAM_NAME --scenario=$SC --nNodes=$v --simTime=$SIM_TIME --routingProtocol=$ROUTING --routingProtocolName=$PROTOCOL_NAME --startRngRun=$START --currentRngRun=$run --stopRngRun=$STOP --externalRngRunControl=1 --ns3::aodv::RoutingProtocol::Beta=$b"
+        echo "StopTime:"
+        date
+        echo --------------------------------------------------------------------------
+        echo Sleeping now for $SLIP_BETWEEN_SIMS...
+        sleep $SLIP_BETWEEN_SIMS
+      done
+    done
+  done
+fi
+
+if [ $AODV_SUBPROTOCOL -eq 5 ]
+then
+  for b in $BETA
+  do
+    for a in $ALPHA
+    do
+      PROTOCOL_NAME="AODV-PLRE-b_$b-a_$a"
+      for v in $VEHICLES
+      do
+        for (( run=$CURRENT_RUN_START; run<=$CURRENT_RUN_STOP; run++ ))
+        do
+          echo 
+          echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          echo x   Run = $run
+          echo x   "./waf --run \"$PROGRAM_NAME --simTime=$SIM_TIME --scenario=$SC --nNodes=$v"
+          echo x   "      --routingProtocol=$ROUTING --routingProtocolName=$PROTOCOL_NAME"
+          echo x   "      --startRngRun=$START --currentRngRun=$run --stopRngRun=$STOP --externalRngRunControl=1"
+          echo x   "      --ns3::aodv::RoutingProtocol::Alpha=$a --ns3::aodv::RoutingProtocol::Beta=$b"
+          echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          echo 
+          echo "Start time:"
+          date
+          ./waf --run "$PROGRAM_NAME --scenario=$SC --nNodes=$v --simTime=$SIM_TIME --routingProtocol=$ROUTING --routingProtocolName=$PROTOCOL_NAME --startRngRun=$START --currentRngRun=$run --stopRngRun=$STOP --externalRngRunControl=1 --ns3::aodv::RoutingProtocol::Alpha=$a --ns3::aodv::RoutingProtocol::Beta=$b"
+          echo "StopTime:"
+          date
+          echo --------------------------------------------------------------------------
+          echo Sleeping now for $SLIP_BETWEEN_SIMS...
+          sleep $SLIP_BETWEEN_SIMS
+        done
+      done    
+    done
+  done
+fi 
+
+if [ $AODV_SUBPROTOCOL -eq 6 ]
+then
+  for p1 in $P1
+  do
+    for p2 in $P2
+    do
+      PROTOCOL_NAME="PAODV-p1_$p1-p2_$p2-lin_$LINEAR"
+      for v in $VEHICLES
+      do
+        for (( run=$CURRENT_RUN_START; run<=$CURRENT_RUN_STOP; run++ ))
+        do
+          echo 
+          echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          echo x   Run = $run
+          echo x   "./waf --run \"$PROGRAM_NAME --simTime=$SIM_TIME --scenario=$SC --nNodes=$v"
+          echo x   "      --routingProtocol=$ROUTING --routingProtocolName=$PROTOCOL_NAME"
+          echo x   "      --startRngRun=$START --currentRngRun=$run --stopRngRun=$STOP --externalRngRunControl=1"
+          echo x   "      --ns3::aodv::RoutingProtocol::p1=$p1 --ns3::aodv::RoutingProtocol::p2=$p2 --ns3::aodv::RoutingProtocol::Linear=$LINEAR"
+          echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          echo 
+          echo "Start time:"
+          date
+          ./waf --run "$PROGRAM_NAME --scenario=$SC --nNodes=$v --simTime=$SIM_TIME --routingProtocol=$ROUTING --routingProtocolName=$PROTOCOL_NAME --startRngRun=$START --currentRngRun=$run --stopRngRun=$STOP --externalRngRunControl=1 --ns3::aodv::RoutingProtocol::p1=$p1 --ns3::aodv::RoutingProtocol::p2=$p2 --ns3::aodv::RoutingProtocol::Linear=$LINEAR"
+          echo "StopTime:"
+          date
+          echo --------------------------------------------------------------------------
+          echo Sleeping now for $SLIP_BETWEEN_SIMS...
+          sleep $SLIP_BETWEEN_SIMS
+        done
+      done    
+    done
+  done
+fi 
+
+if [ $AODV_SUBPROTOCOL -eq 7 ]
+then
+  for b in $BETA
+  do
+    for a in $ALPHA
+    do
+      for p1 in $P1
+      do
+        for p2 in $P2
+        do
+          PROTOCOL_NAME="PAODV-p1_$p1-p2_$p2-lin_$LINEAR-PLRE-b_$b-a_$a"
+          for v in $VEHICLES
+          do
+            for (( run=$CURRENT_RUN_START; run<=$CURRENT_RUN_STOP; run++ ))
+            do
+              echo 
+              echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+              echo x   Run = $run
+              echo x   "./waf --run \"$PROGRAM_NAME --simTime=$SIM_TIME --scenario=$SC --nNodes=$v"
+              echo x   "      --routingProtocol=$ROUTING --routingProtocolName=$PROTOCOL_NAME"
+              echo x   "      --startRngRun=$START --currentRngRun=$run --stopRngRun=$STOP --externalRngRunControl=1"
+              echo x   "      --ns3::aodv::RoutingProtocol::Alpha=$a --ns3::aodv::RoutingProtocol::Beta=$b"
+              echo x   "      --ns3::aodv::RoutingProtocol::p1=$p1 --ns3::aodv::RoutingProtocol::p2=$p2 --ns3::aodv::RoutingProtocol::Linear=$LINEAR"
+              echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+              echo 
+              echo "Start time:"
+              date
+              ./waf --run "$PROGRAM_NAME --scenario=$SC --nNodes=$v --simTime=$SIM_TIME --routingProtocol=$ROUTING --routingProtocolName=$PROTOCOL_NAME --startRngRun=$START --currentRngRun=$run --stopRngRun=$STOP --externalRngRunControl=1 --ns3::aodv::RoutingProtocol::Alpha=$a --ns3::aodv::RoutingProtocol::Beta=$b --ns3::aodv::RoutingProtocol::p1=$p1 --ns3::aodv::RoutingProtocol::p2=$p2 --ns3::aodv::RoutingProtocol::Linear=$LINEAR"
+              echo "StopTime:"
+              date
+              echo --------------------------------------------------------------------------
+              echo Sleeping now for $SLIP_BETWEEN_SIMS...
+              sleep $SLIP_BETWEEN_SIMS
+            done
+          done    
+        done
+      done
+    done
+  done
+fi 
+
+if [ $AODV_SUBPROTOCOL -eq 8 ]
+then
+  for k in $KLINKS
+  do
+    PROTOCOL_NAME="NA-AODV-k_$k"
+    for v in $VEHICLES
+    do
+      for (( run=$CURRENT_RUN_START; run<=$CURRENT_RUN_STOP; run++ ))
+      do
+        echo 
+        echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        echo x   Run = $run
+        echo x   "./waf --run \"$PROGRAM_NAME --simTime=$SIM_TIME --scenario=$SC --nNodes=$v"
+        echo x   "      --routingProtocol=$ROUTING --routingProtocolName=$PROTOCOL_NAME"
+        echo x   "      --startRngRun=$START --currentRngRun=$run --stopRngRun=$STOP --externalRngRunControl=1"
+        echo x   "      --ns3::aodv::RoutingProtocol::PkAodvEnable=1 --ns3::aodv::RoutingProtocol::K=$k"
+        echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        echo 
+        echo "Start time:"
+        date
+        ./waf --run "$PROGRAM_NAME --scenario=$SC --nNodes=$v --simTime=$SIM_TIME --routingProtocol=$ROUTING --routingProtocolName=$PROTOCOL_NAME --startRngRun=$START --currentRngRun=$run --stopRngRun=$STOP --externalRngRunControl=1 --ns3::aodv::RoutingProtocol::PkAodvEnable=1 --ns3::aodv::RoutingProtocol::K=$k"
+        echo "StopTime:"
+        date
+        echo --------------------------------------------------------------------------
+        echo Sleeping now for $SLIP_BETWEEN_SIMS...
+        sleep $SLIP_BETWEEN_SIMS
+      done
+    done    
+  done
+fi 
+
+if [ $AODV_SUBPROTOCOL -eq 9 ]
+then
+  for k in $KLINKS
+  do
+    for b in $BETA
+    do
+      for a in $ALPHA
+      do
+        PROTOCOL_NAME="NA-AODV-k_$k-PLRE-b_$b-a_$a"
+        for v in $VEHICLES
+        do
+          for (( run=$CURRENT_RUN_START; run<=$CURRENT_RUN_STOP; run++ ))
+          do
+            echo 
+            echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+            echo x   Run = $run
+            echo x   "./waf --run \"$PROGRAM_NAME --simTime=$SIM_TIME --scenario=$SC --nNodes=$v"
+            echo x   "      --routingProtocol=$ROUTING --routingProtocolName=$PROTOCOL_NAME"
+            echo x   "      --startRngRun=$START --currentRngRun=$run --stopRngRun=$STOP --externalRngRunControl=1"
+            echo x   "      --ns3::aodv::RoutingProtocol::Alpha=$a --ns3::aodv::RoutingProtocol::Beta=$b"
+            echo x   "      --ns3::aodv::RoutingProtocol::PkAodvEnable=1 --ns3::aodv::RoutingProtocol::K=$k"
+            echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+            echo 
+            echo "Start time:"
+            date
+            ./waf --run "$PROGRAM_NAME --scenario=$SC --nNodes=$v --simTime=$SIM_TIME --routingProtocol=$ROUTING --routingProtocolName=$PROTOCOL_NAME --startRngRun=$START --currentRngRun=$run --stopRngRun=$STOP --externalRngRunControl=1 --ns3::aodv::RoutingProtocol::Alpha=$a --ns3::aodv::RoutingProtocol::Beta=$b --ns3::aodv::RoutingProtocol::PkAodvEnable=1  --ns3::aodv::RoutingProtocol::K=$k"
+            echo "StopTime:"
+            date
+            echo --------------------------------------------------------------------------
+            echo Sleeping now for $SLIP_BETWEEN_SIMS...
+            sleep $SLIP_BETWEEN_SIMS
+          done
+        done
+      done
+    done
+  done
+fi 
+
+if [ $AODV_SUBPROTOCOL -eq 10 ]
+then
+  for k in $KLINKS
+  do
+    for b in $BETA
+    do
+      for a in $ALPHA
+      do
+        PROTOCOL_NAME="NA2-AODV-k_$k-PLRE-b_$b-a_$a"
+        for v in $VEHICLES
+        do
+          for (( run=$CURRENT_RUN_START; run<=$CURRENT_RUN_STOP; run++ ))
+          do
+            echo 
+            echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+            echo x   Run = $run
+            echo x   "./waf --run \"$PROGRAM_NAME --simTime=$SIM_TIME --scenario=$SC --nNodes=$v"
+            echo x   "      --routingProtocol=$ROUTING --routingProtocolName=$PROTOCOL_NAME"
+            echo x   "      --startRngRun=$START --currentRngRun=$run --stopRngRun=$STOP --externalRngRunControl=1"
+            echo x   "      --ns3::aodv::RoutingProtocol::Alpha=$a --ns3::aodv::RoutingProtocol::Beta=$b"
+            echo x   "      --ns3::aodv::RoutingProtocol::PkAodvEnable=1 --ns3::aodv::RoutingProtocol::K=$k"
+            echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+            echo 
+            echo "Start time:"
+            date
+            ./waf --run "$PROGRAM_NAME --scenario=$SC --nNodes=$v --simTime=$SIM_TIME --routingProtocol=$ROUTING --routingProtocolName=$PROTOCOL_NAME --startRngRun=$START --currentRngRun=$run --stopRngRun=$STOP --externalRngRunControl=1 --ns3::aodv::RoutingProtocol::Alpha=$a --ns3::aodv::RoutingProtocol::Beta=$b --ns3::aodv::RoutingProtocol::PkAodvEnable=1  --ns3::aodv::RoutingProtocol::K=$k"
+            echo "StopTime:"
+            date
+            echo --------------------------------------------------------------------------
+            echo Sleeping now for $SLIP_BETWEEN_SIMS...
+            sleep $SLIP_BETWEEN_SIMS
+          done
+        done
+      done
+    done
+  done
+fi 
