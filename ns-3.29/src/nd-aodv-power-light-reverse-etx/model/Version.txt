@@ -1,0 +1,7 @@
+ND-AODV-PLRE (Neighborhood Density - AODV - Power Light ETX metric 1B but based only on LPP reverse count
+K links
+LPP packets do not contain list of neighbor nodes, just ID, source IP and seq no.
+-v1.1 removed origin IP address from LPP
+
+parameter default values:
+k=1

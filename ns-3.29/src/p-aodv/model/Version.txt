@@ -1,0 +1,4 @@
+PAODV version
+parameters default values:
+p1=1.0
+p2=1.0

@@ -1,0 +1,5 @@
+ND-AODV version
+K links
+
+parameters default values:
+k=1
